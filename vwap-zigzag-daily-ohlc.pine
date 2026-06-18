@@ -12,9 +12,9 @@ LABEL_GROUP = "ラベル・テーブル設定"
 PREV_HTF_GROUP = "前日の四本値設定"
 ZIGZAG_GROUP = "Zig Zag設定"
 
-hideonDWM = input(false, title="日足以上ではVWAPを非表示", group=VWAP_GROUP, display=display.data_window)
+hideonDWM = input(true, title="日足以上ではVWAPを非表示", group=VWAP_GROUP, display=display.data_window)
 offset_vwap = input.int(0, title="オフセット", group=VWAP_GROUP, minval=0, display=display.data_window)
-vwap_line_color = input.color(#2962FF, "VWAPラインの色", group=VWAP_GROUP)
+vwap_line_color = input.color(color.aqua, "VWAPラインの色", group=VWAP_GROUP)
 vwap_line_width = input.int(2, "VWAPラインの太さ", group=VWAP_GROUP, minval=1, maxval=5)
 
 showBand_1 = input(true, title="", group=BANDS_GROUP, inline="band_1", display=display.data_window)
@@ -24,14 +24,14 @@ band1_width = input.int(1, "バンド #1の太さ", group=BANDS_GROUP, inline="b
 band1_fill_color = input.color(color.new(color.green, 95), "バンド #1の塗りつぶし", group=BANDS_GROUP, inline="band_1_color")
 
 show_ma5 = input.bool(true, "5本移動平均線を表示", group=MA_GROUP)
-ma5_color = input.color(color.yellow, "5本MAの色", group=MA_GROUP)
+ma5_color = input.color(color.red, "5本MAの色", group=MA_GROUP)
 ma5_width = input.int(2, "5本MAの太さ", group=MA_GROUP, minval=1, maxval=5)
 show_ma20 = input.bool(true, "20本移動平均線を表示", group=MA_GROUP)
-ma20_color = input.color(color.orange, "20本MAの色", group=MA_GROUP)
+ma20_color = input.color(color.yellow, "20本MAの色", group=MA_GROUP)
 ma20_width = input.int(2, "20本MAの太さ", group=MA_GROUP, minval=1, maxval=5)
 ma_source = input.source(close, "MA計算ソース", group=MA_GROUP)
 
-target_date = input.int(20250613, "表示対象日 (YYYYMMDD)", group=DAILY_GROUP, minval=20000101, maxval=20991231)
+target_date = input.int(20260619, "表示対象日 (YYYYMMDD)", group=DAILY_GROUP, minval=20000101, maxval=20991231)
 show_daily_ohlc_input = input.bool(false, "四本値を表示", group=DAILY_GROUP)
 show_daily_ohlc = timeframe.isdwm ? false : show_daily_ohlc_input
 
@@ -64,7 +64,7 @@ prev_vwap_close_width = input.int(2, "前日VWAPの太さ", minval=1, maxval=5, 
 show_zigzag = input.bool(true, "Zig Zagを表示", group=ZIGZAG_GROUP, display=display.data_window)
 deviationInput = input.float(5.0, "Price deviation for reversals (%)", minval=0.00001, maxval=100.0, step=0.5, group=ZIGZAG_GROUP, display=display.data_window, active=show_zigzag)
 depthInput = input.int(10, "Pivot legs", minval=2, group=ZIGZAG_GROUP, display=display.data_window, active=show_zigzag)
-zigZagLineColorInput = input.color(#FF6B35, "Zig Zag line color", group=ZIGZAG_GROUP, display=display.data_window, active=show_zigzag)
+zigZagLineColorInput = input.color(color.blue, "Zig Zag line color", group=ZIGZAG_GROUP, display=display.data_window, active=show_zigzag)
 extendInput = input.bool(true, "Extend to last bar", group=ZIGZAG_GROUP, display=display.data_window, active=show_zigzag)
 showPriceInput = input.bool(true, "Display reversal price", group=ZIGZAG_GROUP, display=display.data_window, active=show_zigzag)
 showVolInput = input.bool(true, "Display cumulative volume", group=ZIGZAG_GROUP, display=display.data_window, active=show_zigzag)
@@ -241,7 +241,7 @@ if show_table and show_label_condition and not timeframe.isdwm and show_daily_oh
         "左上" => position.top_left
         "右下" => position.bottom_right
         "左下" => position.bottom_left
-        => position.top_right
+        => position.bottom_right
 
     table.delete(info_table)
     info_table := table.new(table_pos, 2, 7, bgcolor=color.white, border_width=1, border_color=color.gray)
