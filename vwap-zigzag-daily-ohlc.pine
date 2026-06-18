@@ -32,7 +32,7 @@ ma20_width = input.int(2, "20本MAの太さ", group=MA_GROUP, minval=1, maxval=5
 ma_source = input.source(close, "MA計算ソース", group=MA_GROUP)
 
 target_date = input.int(20260619, "表示対象日 (YYYYMMDD)", group=DAILY_GROUP, minval=20000101, maxval=20991231)
-show_daily_ohlc_input = input.bool(false, "四本値を表示", group=DAILY_GROUP)
+show_daily_ohlc_input = input.bool(true, "四本値を表示", group=DAILY_GROUP)
 show_daily_ohlc = timeframe.isdwm ? false : show_daily_ohlc_input
 
 open_color = input.color(color.white, "始値の色", group=COLOR_GROUP)
@@ -45,7 +45,7 @@ line_width = input.int(2, "ライン幅", minval=1, maxval=5, group=COLOR_GROUP)
 show_labels = input.bool(true, "価格ラベルを表示", group=LABEL_GROUP)
 label_offset = input.int(10, "ラベルオフセット", minval=0, maxval=50, group=LABEL_GROUP)
 show_table = input.bool(true, "情報テーブルを表示", group=LABEL_GROUP)
-table_position = input.string("右上", "テーブル位置", options=["右上", "左上", "右下", "左下"], group=LABEL_GROUP)
+table_position = input.string("左下", "テーブル位置", options=["右上", "左上", "右下", "左下"], group=LABEL_GROUP)
 
 show_prev_htf_input = input.bool(true, "前日の四本値を表示", group=PREV_HTF_GROUP)
 show_prev_htf = timeframe.isdwm ? false : show_prev_htf_input
@@ -241,7 +241,7 @@ if show_table and show_label_condition and not timeframe.isdwm and show_daily_oh
         "左上" => position.top_left
         "右下" => position.bottom_right
         "左下" => position.bottom_left
-        => position.bottom_right
+        => position.top_right
 
     table.delete(info_table)
     info_table := table.new(table_pos, 2, 7, bgcolor=color.white, border_width=1, border_color=color.gray)
