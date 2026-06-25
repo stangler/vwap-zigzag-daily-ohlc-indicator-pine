@@ -31,7 +31,10 @@ ma20_color = input.color(color.yellow, "20本MAの色", group=MA_GROUP)
 ma20_width = input.int(2, "20本MAの太さ", group=MA_GROUP, minval=1, maxval=5)
 ma_source = input.source(close, "MA計算ソース", group=MA_GROUP)
 
-target_date = input.int(20260619, "表示対象日 (YYYYMMDD)", group=DAILY_GROUP, minval=20000101, maxval=20991231)
+target_date_raw = input.int(0, "表示対象日 (YYYYMMDD、0=当日)", group=DAILY_GROUP, minval=0, maxval=20991231)
+today_date = year * 10000 + month * 100 + dayofmonth
+target_date = target_date_raw == 0 ? today_date : target_date_raw
+
 show_daily_ohlc_input = input.bool(true, "四本値を表示", group=DAILY_GROUP)
 show_daily_ohlc = timeframe.isdwm ? false : show_daily_ohlc_input
 
