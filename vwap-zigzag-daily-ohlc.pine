@@ -1,7 +1,7 @@
 //@version=6
 indicator("統合版：VWAP & Zig Zag & 単日四本値", overlay=true, max_lines_count=500, max_labels_count=500)
 
-import TradingView/ZigZag/7 as ZigZagLib
+import DevLucem/ZigLib/1 as ZigZag
 
 VWAP_GROUP = "期間別VWAP設定"
 BANDS_GROUP = "バンド設定"
@@ -11,6 +11,9 @@ COLOR_GROUP = "色設定"
 LABEL_GROUP = "ラベル・テーブル設定"
 PREV_HTF_GROUP = "前日の四本値設定"
 ZIGZAG_GROUP = "Zig Zag設定"
+ZZ_LINE_GROUP = "Zig Zag ライン設定"
+ZZ_LABEL_GROUP = "Zig Zag ラベル設定"
+ZZ_COLOR_GROUP = "Zig Zag 色設定"
 
 hideonDWM = input(true, title="日足以上ではVWAPを非表示", group=VWAP_GROUP, display=display.data_window)
 offset_vwap = input.int(0, title="オフセット", group=VWAP_GROUP, minval=0, display=display.data_window)
@@ -32,7 +35,16 @@ ma20_width = input.int(2, "20本MAの太さ", group=MA_GROUP, minval=1, maxval=5
 ma_source = input.source(close, "MA計算ソース", group=MA_GROUP)
 
 target_date_raw = input.int(0, "表示対象日 (YYYYMMDD、0=当日)", group=DAILY_GROUP, minval=0, maxval=20991231)
-today_date = year * 10000 + month * 100 + dayofmonth
+use_custom_start = input.bool(true, "開始時刻を固定する", group=DAILY_GROUP)
+start_hour = input.int(6, "開始時刻（時）", minval=0, maxval=23, group=DAILY_GROUP)
+start_minute = input.int(0, "開始時刻（分）", minval=0, maxval=59, group=DAILY_GROUP)
+start_tz = input.string("Asia/Tokyo", "開始時刻のタイムゾーン", options=["Asia/Tokyo", "America/New_York", "Europe/London", "UTC"], group=DAILY_GROUP)
+
+// 開始時刻を基準にした「セッション日付」（開始時刻から24時間を1日として扱う）
+start_offset_ms = (start_hour * 60 + start_minute) * 60 * 1000
+shifted_time = time - start_offset_ms
+session_date = use_custom_start ? year(shifted_time, start_tz) * 10000 + month(shifted_time, start_tz) * 100 + dayofmonth(shifted_time, start_tz) : year * 10000 + month * 100 + dayofmonth
+today_date = session_date
 target_date = target_date_raw == 0 ? today_date : target_date_raw
 
 show_daily_ohlc_input = input.bool(true, "四本値を表示", group=DAILY_GROUP)
@@ -58,21 +70,32 @@ prev_htf_high_color = input.color(color.green, "前日高値の色", group=PREV_
 prev_htf_low_color = input.color(color.red, "前日安値の色", group=PREV_HTF_GROUP)
 prev_htf_line_width = input.int(1, "前日ラインの太さ", minval=1, maxval=5, group=PREV_HTF_GROUP)
 
-// ===== 追加：前日大引けVWAPライン設定（最小追加） =====
+// ===== 追加：前日大引けVWAPライン設定 =====
 show_prev_vwap_close_input = input.bool(true, "前日大引けVWAPを表示", group=PREV_HTF_GROUP)
 show_prev_vwap_close = timeframe.isdwm ? false : show_prev_vwap_close_input
 prev_vwap_close_color = input.color(color.aqua, "前日VWAPの色", group=PREV_HTF_GROUP)
 prev_vwap_close_width = input.int(2, "前日VWAPの太さ", minval=1, maxval=5, group=PREV_HTF_GROUP)
 
-show_zigzag = input.bool(true, "Zig Zagを表示", group=ZIGZAG_GROUP, display=display.data_window)
-deviationInput = input.float(5.0, "Price deviation for reversals (%)", minval=0.00001, maxval=100.0, step=0.5, group=ZIGZAG_GROUP, display=display.data_window, active=show_zigzag)
-depthInput = input.int(10, "Pivot legs", minval=2, group=ZIGZAG_GROUP, display=display.data_window, active=show_zigzag)
-zigZagLineColorInput = input.color(color.blue, "Zig Zag line color", group=ZIGZAG_GROUP, display=display.data_window, active=show_zigzag)
-extendInput = input.bool(true, "Extend to last bar", group=ZIGZAG_GROUP, display=display.data_window, active=show_zigzag)
-showPriceInput = input.bool(true, "Display reversal price", group=ZIGZAG_GROUP, display=display.data_window, active=show_zigzag)
-showVolInput = input.bool(true, "Display cumulative volume", group=ZIGZAG_GROUP, display=display.data_window, active=show_zigzag)
-showChgInput = input.bool(true, "Display reversal price change", group=ZIGZAG_GROUP, display=display.data_window, active=show_zigzag)
-priceDiffInput = input.string("Absolute", "Price change format", options=["Absolute", "Percent"], group=ZIGZAG_GROUP, display=display.data_window, active=show_zigzag)
+show_zigzag = input.bool(true, "Zig Zagを表示", group=ZIGZAG_GROUP)
+zzDepth = input.int(12, "Depth", minval=1, step=1, group=ZIGZAG_GROUP)
+zzDeviation = input.int(5, "Deviation", minval=1, step=1, group=ZIGZAG_GROUP)
+zzBackstep = input.int(2, "Backstep", minval=2, step=1, group=ZIGZAG_GROUP)
+zzRepaint = input.bool(true, "リペイント（レベルを更新し続ける）", group=ZIGZAG_GROUP)
+zzExtend = input.bool(false, "Zig Zagを右へ延長", group=ZZ_LINE_GROUP)
+zzLineThick = input.int(2, "ライン太さ", minval=1, maxval=4, group=ZZ_LINE_GROUP)
+zzLineTransp = input.int(0, "ライン透明度", minval=0, maxval=100, group=ZZ_LINE_GROUP)
+zzLabelTransp = input.int(0, "ラベル透明度", minval=0, maxval=100, group=ZZ_LABEL_GROUP)
+zzLabelTextColor = input.color(color.white, "ラベル文字色", group=ZZ_LABEL_GROUP)
+zzLabelSize = switch input.int(3, "ラベルサイズ", minval=1, maxval=5, group=ZZ_LABEL_GROUP)
+    1 => size.tiny
+    2 => size.small
+    3 => size.normal
+    4 => size.large
+    5 => size.huge
+zzUpColor = input.color(color.lime, "上昇の色", group=ZZ_COLOR_GROUP)
+zzDnColor = input.color(color.red, "下降の色", group=ZZ_COLOR_GROUP)
+zzShowBg = input.bool(true, "方向の背景色を表示", group=ZZ_COLOR_GROUP)
+zzBgTransp = input.int(80, "背景透明度", minval=0, maxval=100, group=ZZ_COLOR_GROUP)
 
 var float daily_open = na
 var float daily_high = na
@@ -103,11 +126,48 @@ var line  prevDayVWAPClose_line = na
 
 var table info_table = na
 
-var zigZagSettings = ZigZagLib.Settings.new(deviationInput, depthInput, zigZagLineColorInput, extendInput, showPriceInput, showVolInput, showChgInput, priceDiffInput, true)
-var zigZag = ZigZagLib.newInstance(zigZagSettings)
+// ===== Zig Zag++ [LD]（MT4 ZigZag準拠） =====
+[zzDirection, zz1, zz2] = ZigZag.zigzag(low, high, zzDepth, zzDeviation, zzBackstep)
+float zzP1Prev = na(zz1[1]) ? na : (zz1[1]).price
+float zzP2 = na(zz2) ? na : zz2.price
+float zzP2Prev = na(zz2[1]) ? na : (zz2[1]).price
+string zzNowPoint = ""
+var float zzLastPoint = zzP1Prev
+if bool(ta.change(zzDirection))
+    zzLastPoint := zzP1Prev
 
-if show_zigzag
-    zigZag.update()
+line zzLine = na
+label zzPoint = na
+
+if show_zigzag and not na(zz1) and not na(zz2)
+    if zzRepaint
+        zzLine := line.new(zz1, zz2, xloc.bar_time, zzExtend ? extend.right : extend.none, color.new(zzDirection > 0 ? zzUpColor : zzDnColor, zzLineTransp), width=zzLineThick)
+        zzNowPoint := zzDirection < 0 ? (zzP2 < zzLastPoint ? "LL" : "HL") : (zzP2 > zzLastPoint ? "HH" : "LH")
+        zzPoint := label.new(zz2, zzNowPoint, xloc.bar_time, yloc.price, color.new(zzDirection < 0 ? zzUpColor : zzDnColor, zzLabelTransp), zzDirection > 0 ? label.style_label_down : label.style_label_up, zzLabelTextColor, zzLabelSize)
+        if zzDirection == zzDirection[1]
+            line.delete(zzLine[1])
+            label.delete(zzPoint[1])
+        else
+            line.set_extend(zzLine[1], extend.none)
+    else
+        if zzDirection != zzDirection[1]
+            zzLine := line.new(zz1[1], zz2[1], xloc.bar_time, extend.none, color.new(zzDirection > 0 ? zzUpColor : zzDnColor, zzLineTransp), width=zzLineThick)
+            zzNowPoint := zzDirection[1] < 0 ? (zzP2Prev < zzLastPoint[1] ? "LL" : "HL") : (zzP2Prev > zzLastPoint[1] ? "HH" : "LH")
+            zzPoint := label.new(zz2[1], zzNowPoint, xloc.bar_time, yloc.price, color.new(zzDirection[1] < 0 ? zzUpColor : zzDnColor, zzLabelTransp), zzDirection[1] > 0 ? label.style_label_down : label.style_label_up, zzLabelTextColor, zzLabelSize)
+
+bgcolor(show_zigzag and zzShowBg ? (zzDirection < 0 ? color.new(zzDnColor, zzBgTransp) : color.new(zzUpColor, zzBgTransp)) : na, title="Direction Background")
+plotarrow(zzDirection, "direction", display=display.status_line)
+
+alertcondition(zzNowPoint == "HH" and zzP2 != zzP2Prev, "New Higher High", "Zigzag on {{ticker}} higher high detected at {{time}}")
+alertcondition(zzNowPoint == "LH" and zzP2 != zzP2Prev, "New Lower High", "Zigzag on {{ticker}} lower high detected at {{time}}")
+alertcondition(zzNowPoint == "HL" and zzP2 != zzP2Prev, "New Higher Low", "Zigzag on {{ticker}} higher low detected at {{time}}")
+alertcondition(zzNowPoint == "LL" and zzP2 != zzP2Prev, "New Lower Low", "Zigzag on {{ticker}} lower low detected at {{time}}")
+alertcondition(zzDirection != zzDirection[1], "Direction Changed", "Zigzag on {{ticker}} direction changed at {{time}}")
+alertcondition(zzDirection != zzDirection[1] and zzDirection > 0, "Bullish Direction", "Zigzag on {{ticker}} bullish direction at {{time}}")
+alertcondition(zzDirection != zzDirection[1] and zzDirection < 0, "Bearish Direction", "Zigzag on {{ticker}} bearish direction at {{time}}")
+
+if zzDirection != zzDirection[1]
+    alert((zzDirection < 0 ? "Bearish" : "Bullish") + " Direction Final ", alert.freq_once_per_bar_close)
 
 cumVolume = ta.cum(volume)
 if barstate.islast and cumVolume == 0
@@ -136,7 +196,7 @@ if show_prev_htf
     prevHighHTF  := request.security(syminfo.tickerid, "D", high,  lookahead=barmerge.lookahead_off)
     prevLowHTF   := request.security(syminfo.tickerid, "D", low,   lookahead=barmerge.lookahead_off)
 
-// ===== 修正版：前日最終バー（15:30）のVWAPを vwapValue[1] で確定 =====
+// ===== 前日大引けVWAPライン =====
 if show_prev_vwap_close
     if timeframe.change("D")
         prevDayVWAPClose := vwapValue[1]
@@ -147,19 +207,23 @@ if show_prev_vwap_close
 
         if not na(prevDayVWAPClose)
             prevDayVWAPClose_line := line.new(
-                bar_index, prevDayVWAPClose,
-                bar_index, prevDayVWAPClose,
-                extend=extend.right,
-                width=prev_vwap_close_width,
-                color=prev_vwap_close_color
-            )
+                 bar_index, prevDayVWAPClose,
+                 bar_index, prevDayVWAPClose,
+                 extend=extend.right,
+                 width=prev_vwap_close_width,
+                 color=prev_vwap_close_color
+             )
 
     if not na(prevDayVWAPClose_line) and line.get_x2(prevDayVWAPClose_line) != bar_index
         line.set_x2(prevDayVWAPClose_line, bar_index)
+else
+    // チェックを外したときに削除
+    if not na(prevDayVWAPClose_line)
+        line.delete(prevDayVWAPClose_line)
+        prevDayVWAPClose_line := na
 
-is_new_day = ta.change(time("1D")) != 0
-current_date = year * 10000 + month * 100 + dayofmonth
-is_target_date_bar = current_date == target_date
+is_new_day = use_custom_start ? session_date != nz(session_date[1]) : ta.change(time("1D")) != 0
+is_target_date_bar = session_date == target_date
 
 if is_target_date_bar
     if is_new_day
@@ -186,39 +250,65 @@ fill(upperBand_1, lowerBand_1, title="Bands Fill #1", color=band1_fill_color, di
 plot(show_ma5 ? ma5 : na, title="5本移動平均", color=ma5_color, linewidth=ma5_width)
 plot(show_ma20 ? ma20 : na, title="20本移動平均", color=ma20_color, linewidth=ma20_width)
 
+// ラインは show_daily_ohlc でのみ制御
 plot(is_target_date_bar and show_daily_ohlc and not na(daily_open) ? daily_open : na, title="始値", color=open_color, linewidth=line_width)
 plot(is_target_date_bar and show_daily_ohlc and not na(daily_high) ? daily_high : na, title="高値", color=high_color, linewidth=line_width)
 plot(is_target_date_bar and show_daily_ohlc and not na(daily_low) ? daily_low : na, title="安値", color=low_color, linewidth=line_width)
 plot(is_target_date_bar and show_daily_ohlc and not na(daily_close) ? daily_close : na, title="終値", color=close_color, linewidth=line_width)
 
+// ===== 前日四本値の処理 =====
 if show_prev_htf
     if timeframe.change("D")
-        line.set_x2(prevOpenHTF_line, bar_index)
-        line.set_x2(prevCloseHTF_line, bar_index)
-        line.set_x2(prevHighHTF_line, bar_index)
-        line.set_x2(prevLowHTF_line, bar_index)
-        line.set_extend(prevOpenHTF_line, extend.none)
-        line.set_extend(prevCloseHTF_line, extend.none)
-        line.set_extend(prevHighHTF_line, extend.none)
-        line.set_extend(prevLowHTF_line, extend.none)
+        // 古い線を閉じる
+        if not na(prevOpenHTF_line)
+            line.set_x2(prevOpenHTF_line, bar_index)
+            line.set_extend(prevOpenHTF_line, extend.none)
+        if not na(prevCloseHTF_line)
+            line.set_x2(prevCloseHTF_line, bar_index)
+            line.set_extend(prevCloseHTF_line, extend.none)
+        if not na(prevHighHTF_line)
+            line.set_x2(prevHighHTF_line, bar_index)
+            line.set_extend(prevHighHTF_line, extend.none)
+        if not na(prevLowHTF_line)
+            line.set_x2(prevLowHTF_line, bar_index)
+            line.set_extend(prevLowHTF_line, extend.none)
+
+        // 新しい線を作成
         prevOpenHTF_line  := line.new(bar_index, prevOpenHTF,  bar_index, prevOpenHTF,  extend=extend.right, width=prev_htf_line_width, color=prev_htf_open_color)
         prevCloseHTF_line := line.new(bar_index, prevCloseHTF, bar_index, prevCloseHTF, extend=extend.right, width=prev_htf_line_width, color=prev_htf_close_color)
         prevHighHTF_line  := line.new(bar_index, prevHighHTF,  bar_index, prevHighHTF,  extend=extend.right, width=prev_htf_line_width, color=prev_htf_high_color)
         prevLowHTF_line   := line.new(bar_index, prevLowHTF,   bar_index, prevLowHTF,   extend=extend.right, width=prev_htf_line_width, color=prev_htf_low_color)
+
         label.new(bar_index, prevOpenHTF,  "OPEN",  style=label.style_none, textcolor=prev_htf_open_color,  textalign=text.align_right)
         label.new(bar_index, prevCloseHTF, "CLOSE", style=label.style_none, textcolor=prev_htf_close_color, textalign=text.align_right)
         label.new(bar_index, prevHighHTF,  "HIGH",  style=label.style_none, textcolor=prev_htf_high_color,  textalign=text.align_right)
         label.new(bar_index, prevLowHTF,   "LOW",   style=label.style_none, textcolor=prev_htf_low_color,   textalign=text.align_right)
 
+    // 線の右端を現在バーに合わせる
     if not na(prevOpenHTF_line) and line.get_x2(prevOpenHTF_line) != bar_index
         line.set_x2(prevOpenHTF_line,  bar_index)
         line.set_x2(prevCloseHTF_line, bar_index)
         line.set_x2(prevHighHTF_line,  bar_index)
         line.set_x2(prevLowHTF_line,   bar_index)
+else
+    // チェックを外したときに線を削除
+    if not na(prevOpenHTF_line)
+        line.delete(prevOpenHTF_line)
+        prevOpenHTF_line := na
+    if not na(prevCloseHTF_line)
+        line.delete(prevCloseHTF_line)
+        prevCloseHTF_line := na
+    if not na(prevHighHTF_line)
+        line.delete(prevHighHTF_line)
+        prevHighHTF_line := na
+    if not na(prevLowHTF_line)
+        line.delete(prevLowHTF_line)
+        prevLowHTF_line := na
 
+// ===== 単日四本値のラベル処理（ライン非表示でもラベル単独で表示可能） =====
 show_label_condition = barstate.islast and not na(daily_open)
 
-if show_labels and show_label_condition and show_daily_ohlc
+if show_labels and show_label_condition
     label.delete(open_label)
     label.delete(high_label)
     label.delete(low_label)
@@ -237,8 +327,21 @@ if show_labels and show_label_condition and show_daily_ohlc
         close_label := label.new(label_x, daily_close, text="終値：" + str.tostring(daily_close, "#.##"), color=color.new(close_color, 80), textcolor=close_color, style=label.style_label_left, size=size.small)
     if not na(daily_vwap_value)
         daily_vwap_label := label.new(label_x, daily_vwap_value, text="VWAP：" + str.tostring(daily_vwap_value, "#.##"), color=color.new(daily_vwap_color, 80), textcolor=daily_vwap_color, style=label.style_label_left, size=size.small)
+else
+    // チェックを外したときにラベルを消す
+    label.delete(open_label)
+    label.delete(high_label)
+    label.delete(low_label)
+    label.delete(close_label)
+    label.delete(daily_vwap_label)
+    open_label := na
+    high_label := na
+    low_label := na
+    close_label := na
+    daily_vwap_label := na
 
-if show_table and show_label_condition and not timeframe.isdwm and show_daily_ohlc
+// ===== テーブル処理（ライン非表示でもテーブル単独で表示可能） =====
+if show_table and show_label_condition and not timeframe.isdwm
     table_pos = switch table_position
         "右上" => position.top_right
         "左上" => position.top_left
@@ -268,3 +371,7 @@ if show_table and show_label_condition and not timeframe.isdwm and show_daily_oh
     table.cell(info_table, 1, 5, str.tostring(daily_close, "#.##"), text_color=color.black, text_size=size.normal)
     table.cell(info_table, 0, 6, "VWAP", text_color=color.black, text_size=size.normal)
     table.cell(info_table, 1, 6, str.tostring(daily_vwap_value, "#.##"), text_color=color.black, text_size=size.normal)
+else
+    // チェックを外したときにテーブルを消す
+    table.delete(info_table)
+    info_table := na
