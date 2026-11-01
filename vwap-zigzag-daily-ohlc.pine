@@ -57,7 +57,7 @@ close_color = input.color(color.gray, "終値の色", group=COLOR_GROUP)
 daily_vwap_color = input.color(color.aqua, "単日VWAPの色", group=COLOR_GROUP)
 line_width = input.int(2, "ライン幅", minval=1, maxval=5, group=COLOR_GROUP)
 
-show_labels = input.bool(true, "価格ラベルを表示", group=LABEL_GROUP)
+show_labels = input.bool(false, "価格ラベルを表示", group=LABEL_GROUP)
 label_offset = input.int(10, "ラベルオフセット", minval=0, maxval=50, group=LABEL_GROUP)
 show_table = input.bool(true, "情報テーブルを表示", group=LABEL_GROUP)
 table_position = input.string("左下", "テーブル位置", options=["右上", "左上", "右下", "左下"], group=LABEL_GROUP)
@@ -69,6 +69,7 @@ prev_htf_close_color = input.color(color.gray, "前日終値の色", group=PREV_
 prev_htf_high_color = input.color(color.green, "前日高値の色", group=PREV_HTF_GROUP)
 prev_htf_low_color = input.color(color.red, "前日安値の色", group=PREV_HTF_GROUP)
 prev_htf_line_width = input.int(1, "前日ラインの太さ", minval=1, maxval=5, group=PREV_HTF_GROUP)
+show_prev_labels = input.bool(false, "前日四本値のラベルを表示", group=PREV_HTF_GROUP)
 
 // ===== 追加：前日大引けVWAPライン設定 =====
 show_prev_vwap_close_input = input.bool(true, "前日大引けVWAPを表示", group=PREV_HTF_GROUP)
@@ -84,6 +85,7 @@ zzRepaint = input.bool(true, "リペイント（レベルを更新し続ける�
 zzExtend = input.bool(false, "Zig Zagを右へ延長", group=ZZ_LINE_GROUP)
 zzLineThick = input.int(2, "ライン太さ", minval=1, maxval=4, group=ZZ_LINE_GROUP)
 zzLineTransp = input.int(0, "ライン透明度", minval=0, maxval=100, group=ZZ_LINE_GROUP)
+zzShowLabels = input.bool(true, "HH/LH/HL/LLラベルを表示", group=ZZ_LABEL_GROUP)
 zzLabelTransp = input.int(0, "ラベル透明度", minval=0, maxval=100, group=ZZ_LABEL_GROUP)
 zzLabelTextColor = input.color(color.white, "ラベル文字色", group=ZZ_LABEL_GROUP)
 zzLabelSize = switch input.int(3, "ラベルサイズ", minval=1, maxval=5, group=ZZ_LABEL_GROUP)
@@ -143,7 +145,8 @@ if show_zigzag and not na(zz1) and not na(zz2)
     if zzRepaint
         zzLine := line.new(zz1, zz2, xloc.bar_time, zzExtend ? extend.right : extend.none, color.new(zzDirection > 0 ? zzUpColor : zzDnColor, zzLineTransp), width=zzLineThick)
         zzNowPoint := zzDirection < 0 ? (zzP2 < zzLastPoint ? "LL" : "HL") : (zzP2 > zzLastPoint ? "HH" : "LH")
-        zzPoint := label.new(zz2, zzNowPoint, xloc.bar_time, yloc.price, color.new(zzDirection < 0 ? zzUpColor : zzDnColor, zzLabelTransp), zzDirection > 0 ? label.style_label_down : label.style_label_up, zzLabelTextColor, zzLabelSize)
+        if zzShowLabels
+            zzPoint := label.new(zz2, zzNowPoint, xloc.bar_time, yloc.price, color.new(zzDirection < 0 ? zzUpColor : zzDnColor, zzLabelTransp), zzDirection > 0 ? label.style_label_down : label.style_label_up, zzLabelTextColor, zzLabelSize)
         if zzDirection == zzDirection[1]
             line.delete(zzLine[1])
             label.delete(zzPoint[1])
@@ -153,7 +156,8 @@ if show_zigzag and not na(zz1) and not na(zz2)
         if zzDirection != zzDirection[1]
             zzLine := line.new(zz1[1], zz2[1], xloc.bar_time, extend.none, color.new(zzDirection > 0 ? zzUpColor : zzDnColor, zzLineTransp), width=zzLineThick)
             zzNowPoint := zzDirection[1] < 0 ? (zzP2Prev < zzLastPoint[1] ? "LL" : "HL") : (zzP2Prev > zzLastPoint[1] ? "HH" : "LH")
-            zzPoint := label.new(zz2[1], zzNowPoint, xloc.bar_time, yloc.price, color.new(zzDirection[1] < 0 ? zzUpColor : zzDnColor, zzLabelTransp), zzDirection[1] > 0 ? label.style_label_down : label.style_label_up, zzLabelTextColor, zzLabelSize)
+            if zzShowLabels
+                zzPoint := label.new(zz2[1], zzNowPoint, xloc.bar_time, yloc.price, color.new(zzDirection[1] < 0 ? zzUpColor : zzDnColor, zzLabelTransp), zzDirection[1] > 0 ? label.style_label_down : label.style_label_up, zzLabelTextColor, zzLabelSize)
 
 bgcolor(show_zigzag and zzShowBg ? (zzDirection < 0 ? color.new(zzDnColor, zzBgTransp) : color.new(zzUpColor, zzBgTransp)) : na, title="Direction Background")
 plotarrow(zzDirection, "direction", display=display.status_line)
@@ -279,10 +283,11 @@ if show_prev_htf
         prevHighHTF_line  := line.new(bar_index, prevHighHTF,  bar_index, prevHighHTF,  extend=extend.right, width=prev_htf_line_width, color=prev_htf_high_color)
         prevLowHTF_line   := line.new(bar_index, prevLowHTF,   bar_index, prevLowHTF,   extend=extend.right, width=prev_htf_line_width, color=prev_htf_low_color)
 
-        label.new(bar_index, prevOpenHTF,  "OPEN",  style=label.style_none, textcolor=prev_htf_open_color,  textalign=text.align_right)
-        label.new(bar_index, prevCloseHTF, "CLOSE", style=label.style_none, textcolor=prev_htf_close_color, textalign=text.align_right)
-        label.new(bar_index, prevHighHTF,  "HIGH",  style=label.style_none, textcolor=prev_htf_high_color,  textalign=text.align_right)
-        label.new(bar_index, prevLowHTF,   "LOW",   style=label.style_none, textcolor=prev_htf_low_color,   textalign=text.align_right)
+        if show_prev_labels
+            label.new(bar_index, prevOpenHTF,  "OPEN",  style=label.style_none, textcolor=prev_htf_open_color,  textalign=text.align_right)
+            label.new(bar_index, prevCloseHTF, "CLOSE", style=label.style_none, textcolor=prev_htf_close_color, textalign=text.align_right)
+            label.new(bar_index, prevHighHTF,  "HIGH",  style=label.style_none, textcolor=prev_htf_high_color,  textalign=text.align_right)
+            label.new(bar_index, prevLowHTF,   "LOW",   style=label.style_none, textcolor=prev_htf_low_color,   textalign=text.align_right)
 
     // 線の右端を現在バーに合わせる
     if not na(prevOpenHTF_line) and line.get_x2(prevOpenHTF_line) != bar_index
