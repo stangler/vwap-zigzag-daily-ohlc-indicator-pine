@@ -1,5 +1,5 @@
 //@version=6
-indicator("統合版：VWAP & Zig Zag & 単日四本値", overlay=true, max_lines_count=500, max_labels_count=500)
+indicator("統合版：VWAP & Zig Zag & 単日四本値", overlay=true, max_lines_count=500, max_labels_count=500, max_boxes_count=500)
 
 import DevLucem/ZigLib/1 as ZigZag
 
@@ -14,6 +14,8 @@ ZIGZAG_GROUP = "Zig Zag設定"
 ZZ_LINE_GROUP = "Zig Zag ライン設定"
 ZZ_LABEL_GROUP = "Zig Zag ラベル設定"
 ZZ_COLOR_GROUP = "Zig Zag 色設定"
+SMA_GROUP = "SMA設定（期間可変）"
+SMA_SMOOTH_GROUP = "SMAスムージング設定"
 
 hideonDWM = input(true, title="日足以上ではVWAPを非表示", group=VWAP_GROUP, display=display.data_window)
 offset_vwap = input.int(0, title="オフセット", group=VWAP_GROUP, minval=0, display=display.data_window)
@@ -33,6 +35,17 @@ show_ma20 = input.bool(true, "20本移動平均線を表示", group=MA_GROUP)
 ma20_color = input.color(color.yellow, "20本MAの色", group=MA_GROUP)
 ma20_width = input.int(2, "20本MAの太さ", group=MA_GROUP, minval=1, maxval=5)
 ma_source = input.source(close, "MA計算ソース", group=MA_GROUP)
+show_sma = input.bool(true, "SMAを表示", group=SMA_GROUP)
+sma_len = input.int(10, "SMA期間", minval=1, group=SMA_GROUP)
+sma_src = input.source(close, "SMAソース", group=SMA_GROUP)
+sma_offset = input.int(0, "SMAオフセット", minval=-500, maxval=500, group=SMA_GROUP, display=display.none)
+sma_color = input.color(color.blue, "SMAの色", group=SMA_GROUP)
+sma_width = input.int(1, "SMAの太さ", minval=1, maxval=5, group=SMA_GROUP)
+sma_ma_type = input.string("None", "スムージング種類", options=["None", "SMA", "SMA + Bollinger Bands", "EMA", "SMMA (RMA)", "WMA", "VWMA"], group=SMA_SMOOTH_GROUP, display=display.none)
+sma_ma_len = input.int(14, "スムージング期間", minval=1, group=SMA_SMOOTH_GROUP, display=display.none, active=sma_ma_type != "None")
+sma_bb_mult = input.float(2.0, "BB標準偏差", minval=0.001, maxval=50, step=0.5, group=SMA_SMOOTH_GROUP, tooltip="「SMA + Bollinger Bands」選択時のみ有効。SMAとバンドの距離を決めます。", display=display.none, active=sma_ma_type == "SMA + Bollinger Bands")
+sma_color_ma = input.color(color.yellow, "スムージングMAの色", group=SMA_SMOOTH_GROUP)
+sma_color_bb = input.color(color.green, "BBの色", group=SMA_SMOOTH_GROUP)
 
 target_date_raw = input.int(0, "表示対象日 (YYYYMMDD、0=当日)", group=DAILY_GROUP, minval=0, maxval=20991231)
 use_custom_start = input.bool(true, "開始時刻を固定する", group=DAILY_GROUP)
@@ -194,6 +207,23 @@ if not (hideonDWM and timeframe.isdwm)
 ma5 = ta.sma(ma_source, 5)
 ma20 = ta.sma(ma_source, 20)
 
+// ===== SMA（期間可変）とスムージングMA / ボリンジャーバンド =====
+sma_out = ta.sma(sma_src, sma_len)
+sma_is_bb = sma_ma_type == "SMA + Bollinger Bands"
+sma_enable_ma = sma_ma_type != "None"
+
+smaSmooth(source, length, maType) =>
+    switch maType
+        "SMA" => ta.sma(source, length)
+        "SMA + Bollinger Bands" => ta.sma(source, length)
+        "EMA" => ta.ema(source, length)
+        "SMMA (RMA)" => ta.rma(source, length)
+        "WMA" => ta.wma(source, length)
+        "VWMA" => ta.vwma(source, length)
+
+sma_smoothing = sma_enable_ma ? smaSmooth(sma_out, sma_ma_len, sma_ma_type) : na
+sma_stdev = sma_is_bb ? ta.stdev(sma_out, sma_ma_len) * sma_bb_mult : na
+
 if show_prev_htf
     prevOpenHTF  := request.security(syminfo.tickerid, "D", open,  lookahead=barmerge.lookahead_off)
     prevCloseHTF := request.security(syminfo.tickerid, "D", close, lookahead=barmerge.lookahead_off)
@@ -253,6 +283,11 @@ fill(upperBand_1, lowerBand_1, title="Bands Fill #1", color=band1_fill_color, di
 
 plot(show_ma5 ? ma5 : na, title="5本移動平均", color=ma5_color, linewidth=ma5_width)
 plot(show_ma20 ? ma20 : na, title="20本移動平均", color=ma20_color, linewidth=ma20_width)
+plot(show_sma ? sma_out : na, title="SMA", color=sma_color, linewidth=sma_width, offset=sma_offset)
+plot(show_sma and sma_enable_ma ? sma_smoothing : na, title="SMAスムージングMA", color=sma_color_ma)
+sma_bb_upper = plot(show_sma and sma_is_bb ? sma_smoothing + sma_stdev : na, title="SMA BB上限", color=sma_color_bb)
+sma_bb_lower = plot(show_sma and sma_is_bb ? sma_smoothing - sma_stdev : na, title="SMA BB下限", color=sma_color_bb)
+fill(sma_bb_upper, sma_bb_lower, color=show_sma and sma_is_bb ? color.new(sma_color_bb, 90) : na, title="SMA BB背景")
 
 // ラインは show_daily_ohlc でのみ制御
 plot(is_target_date_bar and show_daily_ohlc and not na(daily_open) ? daily_open : na, title="始値", color=open_color, linewidth=line_width)
@@ -380,3 +415,113 @@ else
     // チェックを外したときにテーブルを消す
     table.delete(info_table)
     info_table := na
+
+// =============================================================================
+// Order Block Detector [LuxAlgo]
+// This work is licensed under CC BY-NC-SA 4.0 (https://creativecommons.org/licenses/by-nc-sa/4.0/)
+// © LuxAlgo  ※Pine v5 から v6 へ変換し、本インジケーターに統合
+// =============================================================================
+OB_GROUP = "オーダーブロック設定 [LuxAlgo]"
+obShow = input.bool(true, "オーダーブロックを表示", group=OB_GROUP)
+obLength = input.int(5, "Volume Pivot Length", minval=1, group=OB_GROUP)
+obBullExt = input.int(3, "強気OB 表示数", minval=1, group=OB_GROUP, inline="obbull")
+obBgBull = input.color(color.new(#169400, 80), "", group=OB_GROUP, inline="obbull")
+obBullCss = input.color(#169400, "", group=OB_GROUP, inline="obbull")
+obBullAvg = input.color(color.new(#9598a1, 37), "", group=OB_GROUP, inline="obbull")
+obBearExt = input.int(3, "弱気OB 表示数", minval=1, group=OB_GROUP, inline="obbear")
+obBgBear = input.color(color.new(#ff1100, 80), "", group=OB_GROUP, inline="obbear")
+obBearCss = input.color(#ff1100, "", group=OB_GROUP, inline="obbear")
+obBearAvg = input.color(color.new(#9598a1, 37), "", group=OB_GROUP, inline="obbear")
+obLineStyle = input.string("⎯⎯⎯", "平均線のスタイル", options=["⎯⎯⎯", "----", "····"], group=OB_GROUP)
+obLineWidth = input.int(1, "平均線の太さ", minval=1, group=OB_GROUP)
+obMitigation = input.string("Wick", "ミティゲーション方式", options=["Wick", "Close"], group=OB_GROUP)
+
+ob_get_line_style(style) =>
+    switch style
+        "----" => line.style_dashed
+        "····" => line.style_dotted
+        => line.style_solid
+
+// オーダーブロックの座標を取得
+ob_get_coordinates(condition, top, btm, obVal) =>
+    var arrTop = array.new_float(0)
+    var arrBtm = array.new_float(0)
+    var arrAvg = array.new_float(0)
+    var arrLeft = array.new_int(0)
+
+    float obFound = na
+
+    if condition
+        array.unshift(arrTop, top)
+        array.unshift(arrBtm, btm)
+        array.unshift(arrAvg, math.avg(top, btm))
+        array.unshift(arrLeft, time[obLength])
+        obFound := obVal
+
+    [arrTop, arrBtm, arrAvg, arrLeft, obFound]
+
+// ミティゲーション済みのオーダーブロックを削除
+ob_remove_mitigated(arrTop, arrBtm, arrLeft, arrAvg, target, bull) =>
+    mitigated = false
+    targetArr = bull ? arrBtm : arrTop
+    i = array.size(targetArr) - 1
+    while i >= 0
+        element = array.get(targetArr, i)
+        if bull ? target < element : target > element
+            mitigated := true
+            array.remove(arrTop, i)
+            array.remove(arrBtm, i)
+            array.remove(arrAvg, i)
+            array.remove(arrLeft, i)
+        i := i - 1
+    mitigated
+
+// 最終バーでボックスと平均線を描画（毎回作り直す）
+ob_set_order_blocks(arrTop, arrBtm, arrLeft, arrAvg, extLast, bgCss, borderCss, lvlCss) =>
+    var array<box> obBoxes = array.new<box>()
+    var array<line> obLvls = array.new<line>()
+    if barstate.islast
+        for b in obBoxes
+            box.delete(b)
+        for l in obLvls
+            line.delete(l)
+        array.clear(obBoxes)
+        array.clear(obLvls)
+        if obShow and array.size(arrTop) > 0
+            for i = 0 to math.min(extLast - 1, array.size(arrTop) - 1)
+                leftT = array.get(arrLeft, i)
+                avgP = array.get(arrAvg, i)
+                array.push(obBoxes, box.new(leftT, array.get(arrTop, i), leftT, array.get(arrBtm, i), xloc=xloc.bar_time, extend=extend.right, bgcolor=bgCss, border_color=color.new(borderCss, 70)))
+                array.push(obLvls, line.new(leftT, avgP, leftT + 1, avgP, xloc=xloc.bar_time, extend=extend.right, color=lvlCss, style=ob_get_line_style(obLineStyle), width=obLineWidth))
+    0
+
+var int obOs = 0
+var float obTargetBull = 0.0
+var float obTargetBear = 0.0
+
+obUpper = ta.highest(obLength)
+obLower = ta.lowest(obLength)
+obCloseLow = ta.lowest(close, obLength)
+obCloseHigh = ta.highest(close, obLength)
+
+obTargetBull := obMitigation == "Close" ? obCloseLow : obLower
+obTargetBear := obMitigation == "Close" ? obCloseHigh : obUpper
+
+obOs := high[obLength] > obUpper ? 0 : low[obLength] < obLower ? 1 : obOs[1]
+
+obPhv = ta.pivothigh(volume, obLength, obLength)
+obPivot = not na(obPhv)
+
+[obBullTop, obBullBtm, obBullAvgArr, obBullLeft, obBullFound] = ob_get_coordinates(obPivot and obOs == 1, hl2[obLength], low[obLength], low[obLength])
+[obBearTop, obBearBtm, obBearAvgArr, obBearLeft, obBearFound] = ob_get_coordinates(obPivot and obOs == 0, high[obLength], hl2[obLength], high[obLength])
+
+obMitigatedBull = ob_remove_mitigated(obBullTop, obBullBtm, obBullLeft, obBullAvgArr, obTargetBull, true)
+obMitigatedBear = ob_remove_mitigated(obBearTop, obBearBtm, obBearLeft, obBearAvgArr, obTargetBear, false)
+
+ob_set_order_blocks(obBullTop, obBullBtm, obBullLeft, obBullAvgArr, obBullExt, obBgBull, obBullCss, obBullAvg)
+ob_set_order_blocks(obBearTop, obBearBtm, obBearLeft, obBearAvgArr, obBearExt, obBgBear, obBearCss, obBearAvg)
+
+alertcondition(not na(obBullFound), "Bullish OB Formed", "Bullish order block detected")
+alertcondition(not na(obBearFound), "Bearish OB Formed", "Bearish order block detected")
+alertcondition(obMitigatedBull, "Bullish OB Mitigated", "Bullish order block mitigated")
+alertcondition(obMitigatedBear, "Bearish OB Mitigated", "Bearish order block mitigated")
