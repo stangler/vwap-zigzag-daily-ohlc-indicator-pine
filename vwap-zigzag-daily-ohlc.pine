@@ -22,27 +22,27 @@ offset_vwap = input.int(0, title="オフセット", group=VWAP_GROUP, minval=0, 
 vwap_line_color = input.color(color.aqua, "VWAPラインの色", group=VWAP_GROUP)
 vwap_line_width = input.int(2, "VWAPラインの太さ", group=VWAP_GROUP, minval=1, maxval=5)
 
-showBand_1 = input(true, title="", group=BANDS_GROUP, inline="band_1", display=display.data_window)
+showBand_1 = input(false, title="", group=BANDS_GROUP, inline="band_1", display=display.data_window)
 bandMult_1 = input.float(1.0, title="バンド乗数 #1", group=BANDS_GROUP, inline="band_1", step=0.5, minval=0, display=display.data_window, active=showBand_1)
 band1_color = input.color(color.green, "バンド #1の色", group=BANDS_GROUP, inline="band_1_color")
 band1_width = input.int(1, "バンド #1の太さ", group=BANDS_GROUP, inline="band_1_width", minval=1, maxval=5)
 band1_fill_color = input.color(color.new(color.green, 95), "バンド #1の塗りつぶし", group=BANDS_GROUP, inline="band_1_color")
 
-show_ma5 = input.bool(true, "5本移動平均線を表示", group=MA_GROUP)
+show_ma5 = input.bool(false, "5本移動平均線を表示", group=MA_GROUP)
 ma5_color = input.color(color.red, "5本MAの色", group=MA_GROUP)
 ma5_width = input.int(2, "5本MAの太さ", group=MA_GROUP, minval=1, maxval=5)
-show_ma20 = input.bool(true, "20本移動平均線を表示", group=MA_GROUP)
+show_ma20 = input.bool(false, "20本移動平均線を表示", group=MA_GROUP)
 ma20_color = input.color(color.yellow, "20本MAの色", group=MA_GROUP)
 ma20_width = input.int(2, "20本MAの太さ", group=MA_GROUP, minval=1, maxval=5)
 ma_source = input.source(close, "MA計算ソース", group=MA_GROUP)
 show_sma = input.bool(true, "SMAを表示", group=SMA_GROUP)
-sma_len = input.int(10, "SMA期間", minval=1, group=SMA_GROUP)
+sma_len = input.int(6, "SMA期間", minval=1, group=SMA_GROUP)
 sma_src = input.source(close, "SMAソース", group=SMA_GROUP)
 sma_offset = input.int(0, "SMAオフセット", minval=-500, maxval=500, group=SMA_GROUP, display=display.none)
 sma_color_up   = input.color(color.blue, "SMAの色（上向き）", group=SMA_GROUP)
 sma_color_down = input.color(color.red,  "SMAの色（下向き）", group=SMA_GROUP)
-sma_width = input.int(1, "SMAの太", minval=1, maxval=5, group=SMA_GROUP)
-sma_style = input.string("実線", "SMAの形状", options=["実線", "破線", "点線"], group=SMA_GROUP)
+sma_width = input.int(3, "SMAの太", minval=1, maxval=5, group=SMA_GROUP)
+sma_style = input.string("点線", "SMAの形状", options=["実線", "破線", "点線"], group=SMA_GROUP)
 sma_ma_type = input.string("None", "スムージング種類", options=["None", "SMA", "SMA + Bollinger Bands", "EMA", "SMMA (RMA)", "WMA", "VWMA"], group=SMA_SMOOTH_GROUP, display=display.none)
 sma_ma_len = input.int(14, "スムージング期間", minval=1, group=SMA_SMOOTH_GROUP, display=display.none, active=sma_ma_type != "None")
 sma_bb_mult = input.float(2.0, "BB標準偏差", minval=0.001, maxval=50, step=0.5, group=SMA_SMOOTH_GROUP, tooltip="「SMA + Bollinger Bands」選択時のみ有効。SMAとバンドの距離を決めます。", display=display.none, active=sma_ma_type == "SMA + Bollinger Bands")
@@ -74,15 +74,15 @@ close_color = input.color(color.gray, "終値の色", group=COLOR_GROUP)
 daily_vwap_color = input.color(color.aqua, "単日VWAPの色", group=COLOR_GROUP)
 line_width = input.int(2, "ライン幅", minval=1, maxval=5, group=COLOR_GROUP)
 
-show_labels = input.bool(false, "価格ラベルを表示", group=LABEL_GROUP)
+show_labels = input.bool(true, "価格ラベを表示", group=LABEL_GROUP)
 label_offset = input.int(10, "ラベルオフセット", minval=0, maxval=50, group=LABEL_GROUP)
 show_table = input.bool(true, "情報テーブルを表示", group=LABEL_GROUP)
 table_position = input.string("左下", "テーブル位置", options=["右上", "左上", "右下", "左下"], group=LABEL_GROUP)
-show_table_date = input.bool(true, "テーブル: 対象日", group=LABEL_GROUP, inline="tbl")
-show_table_open = input.bool(true, "テーブル: 始値", group=LABEL_GROUP, inline="tbl")
-show_table_high = input.bool(true, "テーブル: 高値", group=LABEL_GROUP, inline="tbl")
-show_table_low  = input.bool(true, "テーブル: 安値", group=LABEL_GROUP, inline="tbl")
-show_table_close = input.bool(true, "テーブル: 終値", group=LABEL_GROUP, inline="tbl")
+show_table_date = input.bool(false, "テーブル: 対象日", group=LABEL_GROUP, inline="tbl")
+show_table_open = input.bool(false, "テーブル: 始値", group=LABEL_GROUP, inline="tbl")
+show_table_high = input.bool(false, "テーブル: 高値", group=LABEL_GROUP, inline="tbl")
+show_table_low  = input.bool(false, "テーブル: 安値", group=LABEL_GROUP, inline="tbl")
+show_table_close = input.bool(false, "テーブル: 終値", group=LABEL_GROUP, inline="tbl")
 show_table_vwap  = input.bool(true, "テーブル: VWAP", group=LABEL_GROUP, inline="tbl")
 show_table_sma_dir = input.bool(true, "テーブル: SMA方向", group=LABEL_GROUP, inline="tbl")
 
@@ -93,7 +93,7 @@ prev_htf_close_color = input.color(color.gray, "前日終値の色", group=PREV_
 prev_htf_high_color = input.color(color.green, "前日高値の色", group=PREV_HTF_GROUP)
 prev_htf_low_color = input.color(color.red, "前日安値の色", group=PREV_HTF_GROUP)
 prev_htf_line_width = input.int(1, "前日ラインの太さ", minval=1, maxval=5, group=PREV_HTF_GROUP)
-show_prev_labels = input.bool(false, "前日四本値のラベルを表示", group=PREV_HTF_GROUP)
+show_prev_labels = input.bool(true, "前日四本値のラベルを表示", group=PREV_HTF_GROUP)
 
 // ===== 追加：前日大引けVWAPライン設定 =====
 show_prev_vwap_close_input = input.bool(true, "前日大引けVWAPを表示", group=PREV_HTF_GROUP)
@@ -120,7 +120,7 @@ zzLabelSize = switch input.int(3, "ラベルサイズ", minval=1, maxval=5, grou
     5 => size.huge
 zzUpColor = input.color(color.lime, "上昇の色", group=ZZ_COLOR_GROUP)
 zzDnColor = input.color(color.red, "下降の色", group=ZZ_COLOR_GROUP)
-zzShowBg = input.bool(true, "方向の背景色を表示", group=ZZ_COLOR_GROUP)
+zzShowBg = input.bool(false, "方向の背景色を表示", group=ZZ_COLOR_GROUP)
 zzBgTransp = input.int(80, "背景透明度", minval=0, maxval=100, group=ZZ_COLOR_GROUP)
 
 // ══════════════════════════════════════════════════════════════
@@ -130,7 +130,7 @@ group_pd = "【節目】前日"
 show_pdh = input.bool(true,  "前日高値", group=group_pd)
 show_pdl = input.bool(true,  "前日安値", group=group_pd)
 show_pdc = input.bool(true,  "前日終値", group=group_pd)
-show_pdo = input.bool(false, "前日始値", group=group_pd)
+show_pdo = input.bool(true, "前日始値", group=group_pd)
 
 group_w = "【節目】週"
 show_pwh = input.bool(true,  "前週高値", group=group_w)
@@ -143,12 +143,12 @@ show_r2 = input.bool(true, "R2", group=group_piv)
 show_r1 = input.bool(true, "R1", group=group_piv)
 show_pp = input.bool(true, "PP", group=group_piv)
 show_s1 = input.bool(true, "S1", group=group_piv)
-show_s2 = input.bool(false,"S2", group=group_piv)
+show_s2 = input.bool(true, "S2", group=group_piv)
 
 group_ses = "【節目】セッションボックス"
-show_tokyo_box  = input.bool(true, "東京時間ボックス", group=group_ses)
-show_london_box = input.bool(true, "ロンドン時間ボックス", group=group_ses)
-show_ny_box     = input.bool(true, "NY時間ボックス", group=group_ses)
+show_tokyo_box  = input.bool(false, "東京時間ボックス", group=group_ses)
+show_london_box = input.bool(false, "ロンドン時間ボックス", group=group_ses)
+show_ny_box     = input.bool(false, "NY時間ボックス", group=group_ses)
 
 tokyo_sess  = input.session("0900-1800", "東京時間", group=group_ses)
 london_sess = input.session("1600-0100", "ロンドン時間", group=group_ses)
@@ -159,7 +159,7 @@ london_bg = input.color(color.new(#e65100, 75), "ロンドン背景色", group=g
 ny_bg     = input.color(color.new(#004d40, 75), "NY背景色", group=group_ses)
 
 group_round = "【節目】キリ番（心理的節目）"
-show_round = input.bool(true, "キリ番を表示", group=group_round)
+show_round = input.bool(false, "キリ番を表示", group=group_round)
 round_step = input.float(50.0, "キリの間隔", minval=10, step=10, group=group_round)
 round_count = input.int(6, "上下に表示する本数", minval=1, maxval=15, group=group_round)
 round_color = input.color(color.new(#9e9e9e, 30), "キリ番の色", group=group_round)
@@ -167,10 +167,10 @@ round_color = input.color(color.new(#9e9e9e, 30), "キリ番の色", group=group
 mkl_line_width = input.int(1, "節目ライン太さ", minval=1, maxval=3, group=group_round)
 
 group_sig = "【節目】サイン"
-use_sig = input.bool(true, "サインを表示", group=group_sig)
-use_wick = input.bool(true, "ヒゲ反転", group=group_sig)
-use_dbl = input.bool(true, "ダブルトップ/ボトム", group=group_sig)
-use_fail = input.bool(true, "抜け失敗", group=group_sig)
+use_sig = input.bool(false, "サインを表示", group=group_sig)
+use_wick = input.bool(false, "ヒゲ反転", group=group_sig)
+use_dbl = input.bool(false, "ダブルトップ/ボトム", group=group_sig)
+use_fail = input.bool(false, "抜け失敗", group=group_sig)
 atr_len = input.int(14, "ATR期間", minval=1, group=group_sig)
 tol_mult = input.float(0.15, "節目への接近許容（ATR倍）", minval=0.0, step=0.05, group=group_sig)
 pierce_mult = input.float(0.30, "節目の突き抜け許容（ATR倍）", minval=0.0, step=0.05, group=group_sig)
@@ -638,7 +638,7 @@ else
 // © LuxAlgo  ※Pine v5 から v6 へ変換し、本インジケーターに統合
 // =============================================================================
 OB_GROUP = "オーダーブロック設定 [LuxAlgo]"
-obShow = input.bool(true, "オーダーブロックを表示", group=OB_GROUP)
+obShow = input.bool(false, "オーダーブロックを表示", group=OB_GROUP)
 obLength = input.int(5, "Volume Pivot Length", minval=1, group=OB_GROUP)
 obBullExt = input.int(3, "強気OB 表示数", minval=1, group=OB_GROUP, inline="obbull")
 obBgBull = input.color(color.new(#169400, 80), "", group=OB_GROUP, inline="obbull")
