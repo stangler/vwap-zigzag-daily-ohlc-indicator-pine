@@ -34,6 +34,9 @@ ma5_width = input.int(2, "5本MAの太さ", group=MA_GROUP, minval=1, maxval=5)
 show_ma20 = input.bool(false, "20本移動平均線を表示", group=MA_GROUP)
 ma20_color = input.color(color.yellow, "20本MAの色", group=MA_GROUP)
 ma20_width = input.int(2, "20本MAの太さ", group=MA_GROUP, minval=1, maxval=5)
+show_ma200 = input.bool(true, "200日移動平均線を表示", group=MA_GROUP)
+ma200_color = input.color(color.purple, "200日MAの色", group=MA_GROUP)
+ma200_width = input.int(2, "200日MAの太さ", group=MA_GROUP, minval=1, maxval=5)
 ma_source = input.source(close, "MA計算ソース", group=MA_GROUP)
 show_sma = input.bool(true, "SMAを表示", group=SMA_GROUP)
 sma_len = input.int(6, "SMA期間", minval=1, group=SMA_GROUP)
@@ -260,8 +263,6 @@ if zzDirection != zzDirection[1]
     alert((zzDirection < 0 ? "Bearish" : "Bullish") + " Direction Final ", alert.freq_once_per_bar_close)
 
 cumVolume = ta.cum(volume)
-if barstate.islast and cumVolume == 0
-    runtime.error("出来高データがありません。")
 
 isNewPeriod = timeframe.change("D")
 src_vwap = hlc3
@@ -270,7 +271,7 @@ float vwapValue = na
 float upperBandValue1 = na
 float lowerBandValue1 = na
 
-if not (hideonDWM and timeframe.isdwm)
+if not (hideonDWM and timeframe.isdwm) and cumVolume > 0
     [_vwap, _stdevUpper, _] = ta.vwap(src_vwap, isNewPeriod, 1)
     vwapValue := _vwap
     stdevAbs = _stdevUpper - _vwap
@@ -279,6 +280,8 @@ if not (hideonDWM and timeframe.isdwm)
 
 ma5 = ta.sma(ma_source, 5)
 ma20 = ta.sma(ma_source, 20)
+// 200日移動平均線：日足の200本分を時間足などでも表示できるように日足から取得
+ma200 = request.security(syminfo.tickerid, "D", ta.sma(close, 200), gaps=barmerge.gaps_off)
 
 // ===== SMA（期間可変）とスムージングMA / ボリンジャーバンド =====
 sma_out = ta.sma(sma_src, sma_len)
@@ -471,6 +474,7 @@ fill(upperBand_1, lowerBand_1, title="Bands Fill #1", color=band1_fill_color, di
 
 plot(show_ma5 ? ma5 : na, title="5本移動平均", color=ma5_color, linewidth=ma5_width)
 plot(show_ma20 ? ma20 : na, title="20本移動平均", color=ma20_color, linewidth=ma20_width)
+plot(show_ma200 ? ma200 : na, title="200日移動平均", color=ma200_color, linewidth=ma200_width)
 plot(show_sma ? sma_out : na, title="SMA", color=sma_dir_color, linewidth=sma_width, offset=sma_offset, linestyle=sma_linestyle(sma_style))
 plot(show_sma and sma_enable_ma ? sma_smoothing : na, title="SMAスムージングMA", color=sma_color_ma, linewidth=sma_ma_width, linestyle=sma_linestyle(sma_ma_style))
 sma_bb_upper = plot(show_sma and sma_is_bb ? sma_smoothing + sma_stdev : na, title="SMA BB上限", color=sma_color_bb)
