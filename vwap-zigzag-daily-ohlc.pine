@@ -16,6 +16,7 @@ ZZ_LABEL_GROUP = "Zig Zag ラベル設定"
 ZZ_COLOR_GROUP = "Zig Zag 色設定"
 SMA_GROUP = "SMA設定（期間可変）"
 SMA_SMOOTH_GROUP = "SMAスムージング設定"
+MACD_GROUP = "MACD設定"
 
 hideonDWM = input(true, title="日足以上ではVWAPを非表示", group=VWAP_GROUP, display=display.data_window)
 offset_vwap = input.int(0, title="オフセット", group=VWAP_GROUP, minval=0, display=display.data_window)
@@ -87,7 +88,22 @@ show_table_high = input.bool(false, "テーブル: 高値", group=LABEL_GROUP, i
 show_table_low  = input.bool(false, "テーブル: 安値", group=LABEL_GROUP, inline="tbl")
 show_table_close = input.bool(false, "テーブル: 終値", group=LABEL_GROUP, inline="tbl")
 show_table_vwap  = input.bool(true, "テーブル: VWAP", group=LABEL_GROUP, inline="tbl")
-show_table_sma_dir = input.bool(true, "テーブル: SMA方向", group=LABEL_GROUP, inline="tbl")
+show_table_sma_dir = input.bool(true, "テーブル: SMA", group=LABEL_GROUP, inline="tbl")
+show_table_macd   = input.bool(false, "テーブル: MACD", group=LABEL_GROUP, inline="tbl2")
+show_table_signal = input.bool(false, "テーブル: Signal", group=LABEL_GROUP, inline="tbl2")
+show_table_hist   = input.bool(true,  "テーブル: Hist", group=LABEL_GROUP, inline="tbl2")
+show_table_cross  = input.bool(true,  "テーブル: クロス", group=LABEL_GROUP, inline="tbl2")
+show_table_div    = input.bool(true,  "テーブル: DIV", group=LABEL_GROUP, inline="tbl2")
+show_table_gc_time  = input.bool(false, "テーブル: GC時刻", group=LABEL_GROUP, inline="tbl2")
+show_table_dc_time  = input.bool(false, "テーブル: DC時刻", group=LABEL_GROUP, inline="tbl2")
+show_table_div_time = input.bool(false, "テーブル: DIV時刻", group=LABEL_GROUP, inline="tbl2")
+
+// ===== MACD設定 =====
+macd_fast         = input.int(12, "Fast Length", minval=1, group=MACD_GROUP)
+macd_slow         = input.int(26, "Slow Length", minval=1, group=MACD_GROUP)
+macd_signal       = input.int(9,  "Signal Length", minval=1, group=MACD_GROUP)
+macd_src          = input.source(close, "ソース", group=MACD_GROUP)
+enable_macd_alert = input.bool(true, "MACDクロスアラートを有効", group=MACD_GROUP)
 
 show_prev_htf_input = input.bool(true, "前日の四本値を表示", group=PREV_HTF_GROUP)
 show_prev_htf = timeframe.isdwm ? false : show_prev_htf_input
@@ -304,6 +320,90 @@ sma_stdev = sma_is_bb ? ta.stdev(sma_out, sma_ma_len) * sma_bb_mult : na
 sma_dir = ta.rising(sma_out, 1) ? 1 : ta.falling(sma_out, 1) ? -1 : 0
 sma_dir_color = sma_dir > 0 ? sma_color_up : sma_dir < 0 ? sma_color_down : color.gray
 sma_dir_text  = sma_dir > 0 ? "上向き" : sma_dir < 0 ? "下向き" : "横ばい"
+
+// ===== MACD計算 =====
+[macdLine, signalLine, histLine] = ta.macd(macd_src, macd_fast, macd_slow, macd_signal)
+
+// クロス判定（発生瞬間）
+macd_gc = ta.crossover(macdLine, signalLine)   // ゴールデンクロス
+macd_dc = ta.crossunder(macdLine, signalLine)  // デッドクロス
+
+// クロス状態（常時表示）
+macd_cross_text  = macdLine > signalLine ? "GC側" : "DC側"
+macd_cross_color = macdLine > signalLine ? color.green : color.red
+
+// MACD / Signal 方向（1本前との比較）
+macd_dir = ta.rising(macdLine, 1) ? 1 : ta.falling(macdLine, 1) ? -1 : 0
+macd_dir_text  = macd_dir > 0 ? "上向き" : macd_dir < 0 ? "下向き" : "横ばい"
+macd_dir_color = macd_dir > 0 ? color.green : macd_dir < 0 ? color.red : color.gray
+
+signal_dir = ta.rising(signalLine, 1) ? 1 : ta.falling(signalLine, 1) ? -1 : 0
+signal_dir_text  = signal_dir > 0 ? "上向き" : signal_dir < 0 ? "下向き" : "横ばい"
+signal_dir_color = signal_dir > 0 ? color.green : signal_dir < 0 ? color.red : color.gray
+
+// Hist 符号
+hist_text  = histLine > 0 ? "0以上" : histLine < 0 ? "0以下" : "0"
+hist_color = histLine > 0 ? color.green : histLine < 0 ? color.red : color.gray
+
+// ===== ダイバージェンス検出（簡易・レギュラー） =====
+div_lookback = 5
+ph_price = ta.pivothigh(high, div_lookback, div_lookback)
+pl_price = ta.pivotlow(low, div_lookback, div_lookback)
+ph_macd  = ta.pivothigh(macdLine, div_lookback, div_lookback)
+pl_macd  = ta.pivotlow(macdLine, div_lookback, div_lookback)
+
+var float last_ph_price = na
+var float last_pl_price = na
+var float last_ph_macd  = na
+var float last_pl_macd  = na
+
+// 弱気DIV：価格高値更新 + MACD高値切り下げ（更新前の値と比較）
+bear_div = not na(ph_price) and not na(last_ph_price) and not na(ph_macd) and not na(last_ph_macd) and ph_price > last_ph_price and ph_macd < last_ph_macd
+// 強気DIV：価格安値更新 + MACD安値切り上げ
+bull_div = not na(pl_price) and not na(last_pl_price) and not na(pl_macd) and not na(last_pl_macd) and pl_price < last_pl_price and pl_macd > last_pl_macd
+
+// ピボット確定後に前回値を更新
+if not na(ph_price)
+    last_ph_price := ph_price
+if not na(pl_price)
+    last_pl_price := pl_price
+if not na(ph_macd)
+    last_ph_macd := ph_macd
+if not na(pl_macd)
+    last_pl_macd := pl_macd
+
+var int div_detected_bar = na
+if bear_div or bull_div
+    div_detected_bar := bar_index
+
+div_active = not na(div_detected_bar) and (bar_index - div_detected_bar) <= 10
+
+// 発生予告：ヒストグラム縮小 + 価格とMACDの乖離傾向
+hist_shrinking = histLine * histLine[1] > 0 and math.abs(histLine) < math.abs(histLine[1])
+div_warning = hist_shrinking and ((macdLine > signalLine and close < close[3]) or (macdLine < signalLine and close > close[3]))
+
+div_text  = div_active ? "発生中" : div_warning ? "発生予告" : "なし"
+div_color = div_active ? color.orange : div_warning ? color.yellow : color.gray
+
+// ===== 直近発生時刻の記録 =====
+var int last_gc_time  = na
+var int last_dc_time  = na
+var int last_div_time = na
+
+if macd_gc
+    last_gc_time := time
+if macd_dc
+    last_dc_time := time
+if bear_div or bull_div
+    last_div_time := time
+
+// 時刻フォーマット（HH:MM）
+format_time_hm(t) =>
+    na(t) ? "-" : str.format("{0,time,HH:mm}", t)
+
+last_gc_str  = format_time_hm(last_gc_time)
+last_dc_str  = format_time_hm(last_dc_time)
+last_div_str = format_time_hm(last_div_time)
 
 // SMA線形状変換
 sma_linestyle(style) =>
@@ -591,6 +691,14 @@ if show_table and show_label_condition and not timeframe.isdwm
     table_rows += show_table_close ? 1 : 0
     table_rows += show_table_vwap  ? 1 : 0
     table_rows += show_table_sma_dir ? 1 : 0
+    table_rows += show_table_macd ? 1 : 0
+    table_rows += show_table_signal ? 1 : 0
+    table_rows += show_table_hist ? 1 : 0
+    table_rows += show_table_cross ? 1 : 0
+    table_rows += show_table_div ? 1 : 0
+    table_rows += show_table_gc_time ? 1 : 0
+    table_rows += show_table_dc_time ? 1 : 0
+    table_rows += show_table_div_time ? 1 : 0
     info_table := table.new(table_pos, 2, table_rows, bgcolor=color.white, border_width=1, border_color=color.gray)
 
     target_year  = int(target_date / 10000)
@@ -629,12 +737,58 @@ if show_table and show_label_condition and not timeframe.isdwm
         table.cell(info_table, 1, row, str.tostring(daily_vwap_value, "#.##"), text_color=color.black, text_size=size.normal)
         row += 1
     if show_table_sma_dir
-        table.cell(info_table, 0, row, "SMA方向", text_color=color.black, text_size=size.normal)
+        table.cell(info_table, 0, row, "SMA", text_color=color.black, text_size=size.normal)
         table.cell(info_table, 1, row, sma_dir_text, text_color=sma_dir_color, text_size=size.normal)
+        row += 1
+
+    // ===== MACDテーブル =====
+    if show_table_macd
+        table.cell(info_table, 0, row, "MACD", text_color=color.black, text_size=size.normal)
+        table.cell(info_table, 1, row, macd_dir_text, text_color=macd_dir_color, text_size=size.normal)
+        row += 1
+    if show_table_signal
+        table.cell(info_table, 0, row, "Signal", text_color=color.black, text_size=size.normal)
+        table.cell(info_table, 1, row, signal_dir_text, text_color=signal_dir_color, text_size=size.normal)
+        row += 1
+    if show_table_hist
+        table.cell(info_table, 0, row, "Hist", text_color=color.black, text_size=size.normal)
+        table.cell(info_table, 1, row, hist_text, text_color=hist_color, text_size=size.normal)
+        row += 1
+    if show_table_cross
+        table.cell(info_table, 0, row, "クロス", text_color=color.black, text_size=size.normal)
+        table.cell(info_table, 1, row, macd_cross_text, text_color=macd_cross_color, text_size=size.normal)
+        row += 1
+    if show_table_div
+        table.cell(info_table, 0, row, "DIV", text_color=color.black, text_size=size.normal)
+        table.cell(info_table, 1, row, div_text, text_color=div_color, text_size=size.normal)
+        row += 1
+    if show_table_gc_time
+        table.cell(info_table, 0, row, "GC時刻", text_color=color.black, text_size=size.normal)
+        table.cell(info_table, 1, row, last_gc_str, text_color=color.green, text_size=size.normal)
+        row += 1
+    if show_table_dc_time
+        table.cell(info_table, 0, row, "DC時刻", text_color=color.black, text_size=size.normal)
+        table.cell(info_table, 1, row, last_dc_str, text_color=color.red, text_size=size.normal)
+        row += 1
+    if show_table_div_time
+        table.cell(info_table, 0, row, "DIV時刻", text_color=color.black, text_size=size.normal)
+        table.cell(info_table, 1, row, last_div_str, text_color=color.orange, text_size=size.normal)
+        row += 1
 else
     // チェックを外したときにテーブルを消す
     table.delete(info_table)
     info_table := na
+
+// ===== MACDクロス・ダイバージェンスアラート =====
+if enable_macd_alert
+    if macd_gc
+        alert("MACD ゴールデンクロス発生", alert.freq_once_per_bar)
+    if macd_dc
+        alert("MACD デッドクロス発生", alert.freq_once_per_bar)
+    if bear_div
+        alert("MACD 弱気ダイバージェンス発生", alert.freq_once_per_bar)
+    if bull_div
+        alert("MACD 強気ダイバージェンス発生", alert.freq_once_per_bar)
 
 // =============================================================================
 // Order Block Detector [LuxAlgo]
