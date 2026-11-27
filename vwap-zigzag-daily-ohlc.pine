@@ -22,6 +22,7 @@ hideonDWM = input(true, title="日足以上ではVWAPを非表示", group=VWAP_G
 offset_vwap = input.int(0, title="オフセット", group=VWAP_GROUP, minval=0, display=display.data_window)
 vwap_line_color = input.color(color.aqua, "VWAPラインの色", group=VWAP_GROUP)
 vwap_line_width = input.int(2, "VWAPラインの太さ", group=VWAP_GROUP, minval=1, maxval=5)
+show_vwap_right = input.bool(true, "VWAPを右側へ延長表示（ピボット同様）", group=VWAP_GROUP)
 
 showBand_1 = input(false, title="", group=BANDS_GROUP, inline="band_1", display=display.data_window)
 bandMult_1 = input.float(1.0, title="バンド乗数 #1", group=BANDS_GROUP, inline="band_1", step=0.5, minval=0, display=display.data_window, active=showBand_1)
@@ -70,6 +71,8 @@ target_date = target_date_raw == 0 ? today_date : target_date_raw
 
 show_daily_ohlc_input = input.bool(true, "四本値を表示", group=DAILY_GROUP)
 show_daily_ohlc = timeframe.isdwm ? false : show_daily_ohlc_input
+show_daily_right = input.bool(true, "四本値を右側へ延長表示（ピボット同様）", group=DAILY_GROUP)
+show_daily_candle_lines = input.bool(false, "四本値をローソク足の位置にもラインで表示", group=DAILY_GROUP)
 
 open_color = input.color(color.white, "始値の色", group=COLOR_GROUP)
 high_color = input.color(color.green, "高値の色", group=COLOR_GROUP)
@@ -119,6 +122,7 @@ show_prev_vwap_close_input = input.bool(true, "前日大引けVWAPを表示", gr
 show_prev_vwap_close = timeframe.isdwm ? false : show_prev_vwap_close_input
 prev_vwap_close_color = input.color(color.aqua, "前日VWAPの色", group=PREV_HTF_GROUP)
 prev_vwap_close_width = input.int(2, "前日VWAPの太さ", minval=1, maxval=5, group=PREV_HTF_GROUP)
+show_prev_vwap_label = input.bool(true, "前日VWAPのラベルを表示", group=PREV_HTF_GROUP)
 
 show_zigzag = input.bool(true, "Zig Zagを表示", group=ZIGZAG_GROUP)
 zzDepth = input.int(12, "Depth", minval=1, step=1, group=ZIGZAG_GROUP)
@@ -184,7 +188,7 @@ round_count = input.int(6, "上下に表示する本数", minval=1, maxval=15, g
 round_color = input.color(color.new(#9e9e9e, 30), "キリ番の色", group=group_round)
 
 mkl_line_width = input.int(1, "節目ライン太さ", minval=1, maxval=3, group=group_round)
-mkl_label_offset = input.int(2, "節目ラベルオフセット（バー数）", minval=0, maxval=50, group=group_round)
+mkl_label_offset = input.int(8, "節目ラベルオフセット（バー数）", minval=0, maxval=50, group=group_round)
 
 group_sig = "【節目】サイン"
 use_sig = input.bool(false, "サインを表示", group=group_sig)
@@ -582,11 +586,11 @@ sma_bb_upper = plot(show_sma and sma_is_bb ? sma_smoothing + sma_stdev : na, tit
 sma_bb_lower = plot(show_sma and sma_is_bb ? sma_smoothing - sma_stdev : na, title="SMA BB下限", color=sma_color_bb)
 fill(sma_bb_upper, sma_bb_lower, color=show_sma and sma_is_bb ? color.new(sma_color_bb, 90) : na, title="SMA BB背景")
 
-// ラインは show_daily_ohlc でのみ制御
-plot(is_target_date_bar and show_daily_ohlc and not na(daily_open) ? daily_open : na, title="始値", color=open_color, linewidth=line_width)
-plot(is_target_date_bar and show_daily_ohlc and not na(daily_high) ? daily_high : na, title="高値", color=high_color, linewidth=line_width)
-plot(is_target_date_bar and show_daily_ohlc and not na(daily_low) ? daily_low : na, title="安値", color=low_color, linewidth=line_width)
-plot(is_target_date_bar and show_daily_ohlc and not na(daily_close) ? daily_close : na, title="終値", color=close_color, linewidth=line_width)
+// ローソク足位置のラインは show_daily_ohlc かつ show_daily_candle_lines のときのみ表示（デフォルト非表示）
+plot(is_target_date_bar and show_daily_ohlc and show_daily_candle_lines and not na(daily_open) ? daily_open : na, title="始値", color=open_color, linewidth=line_width)
+plot(is_target_date_bar and show_daily_ohlc and show_daily_candle_lines and not na(daily_high) ? daily_high : na, title="高値", color=high_color, linewidth=line_width)
+plot(is_target_date_bar and show_daily_ohlc and show_daily_candle_lines and not na(daily_low) ? daily_low : na, title="安値", color=low_color, linewidth=line_width)
+plot(is_target_date_bar and show_daily_ohlc and show_daily_candle_lines and not na(daily_close) ? daily_close : na, title="終値", color=close_color, linewidth=line_width)
 
 // ===== 前日四本値の処理 =====
 if show_prev_htf
@@ -638,6 +642,51 @@ else
         line.delete(prevLowHTF_line)
         prevLowHTF_line := na
 
+// ===== 当日四本値の右側延長ライン（最新バーから右へ延長。ピボットと同様） =====
+var line daily_open_ext  = na
+var line daily_high_ext  = na
+var line daily_low_ext   = na
+var line daily_close_ext = na
+
+if barstate.islast
+    line.delete(daily_open_ext)
+    line.delete(daily_high_ext)
+    line.delete(daily_low_ext)
+    line.delete(daily_close_ext)
+    daily_open_ext  := na
+    daily_high_ext  := na
+    daily_low_ext   := na
+    daily_close_ext := na
+
+    if show_daily_ohlc and show_daily_right and not na(daily_open)
+        daily_open_ext  := line.new(bar_index, daily_open,  bar_index + 1, daily_open,  color=open_color,  width=line_width, extend=extend.right)
+        daily_high_ext  := line.new(bar_index, daily_high,  bar_index + 1, daily_high,  color=high_color,  width=line_width, extend=extend.right)
+        daily_low_ext   := line.new(bar_index, daily_low,   bar_index + 1, daily_low,   color=low_color,   width=line_width, extend=extend.right)
+        daily_close_ext := line.new(bar_index, daily_close, bar_index + 1, daily_close, color=close_color, width=line_width, extend=extend.right)
+
+// ラベル文字色（背景色の明るさに応じて黒/白を自動選択）
+f_label_text_color(color c) =>
+    float lum = (color.r(c) * 299.0 + color.g(c) * 587.0 + color.b(c) * 114.0) / 1000.0
+    lum > 150.0 ? color.black : color.white
+
+// ===== 当日VWAPの右側延長ライン（最新バーから右へ延長。ローソク足位置のラインはそのまま） =====
+var line vwap_ext_line = na
+
+if barstate.islast
+    line.delete(vwap_ext_line)
+    vwap_ext_line := na
+    if show_vwap_right and not na(vwapValue)
+        vwap_ext_line := line.new(bar_index, vwapValue, bar_index + 1, vwapValue, color=vwap_line_color, width=vwap_line_width, extend=extend.right)
+
+// ===== 前日VWAPのラベル（ピボットと同じ見た目・ラベルオフセットで右側に表示） =====
+var label prev_vwap_label = na
+
+if barstate.islast
+    label.delete(prev_vwap_label)
+    prev_vwap_label := na
+    if show_prev_vwap_close and show_prev_vwap_label and not na(prevDayVWAPClose)
+        prev_vwap_label := label.new(bar_index + label_offset, prevDayVWAPClose, text="前日VWAP  " + str.tostring(prevDayVWAPClose, format.mintick), color=color.new(prev_vwap_close_color, 15), textcolor=f_label_text_color(prev_vwap_close_color), style=label.style_label_left, size=size.normal)
+
 // ===== 単日四本値のラベル処理（ライン非表示でもラベル単独で表示可能） =====
 show_label_condition = barstate.islast and not na(daily_open)
 
@@ -651,15 +700,15 @@ if show_labels and show_label_condition
     label_x = bar_index + label_offset
 
     if not na(daily_open)
-        open_label := label.new(label_x, daily_open, text="始値：" + str.tostring(daily_open, "#.##"), color=color.new(open_color, 80), textcolor=open_color, style=label.style_label_left, size=size.small)
+        open_label := label.new(label_x, daily_open, text="当日始値  " + str.tostring(daily_open, format.mintick), color=color.new(open_color, 15), textcolor=f_label_text_color(open_color), style=label.style_label_left, size=size.normal)
     if not na(daily_high)
-        high_label := label.new(label_x, daily_high, text="高値：" + str.tostring(daily_high, "#.##"), color=color.new(high_color, 80), textcolor=high_color, style=label.style_label_left, size=size.small)
+        high_label := label.new(label_x, daily_high, text="当日高値  " + str.tostring(daily_high, format.mintick), color=color.new(high_color, 15), textcolor=f_label_text_color(high_color), style=label.style_label_left, size=size.normal)
     if not na(daily_low)
-        low_label := label.new(label_x, daily_low, text="安値：" + str.tostring(daily_low, "#.##"), color=color.new(low_color, 80), textcolor=low_color, style=label.style_label_left, size=size.small)
+        low_label := label.new(label_x, daily_low, text="当日安値  " + str.tostring(daily_low, format.mintick), color=color.new(low_color, 15), textcolor=f_label_text_color(low_color), style=label.style_label_left, size=size.normal)
     if not na(daily_close)
-        close_label := label.new(label_x, daily_close, text="終値：" + str.tostring(daily_close, "#.##"), color=color.new(close_color, 80), textcolor=close_color, style=label.style_label_left, size=size.small)
-    if not na(daily_vwap_value)
-        daily_vwap_label := label.new(label_x, daily_vwap_value, text="VWAP：" + str.tostring(daily_vwap_value, "#.##"), color=color.new(daily_vwap_color, 80), textcolor=daily_vwap_color, style=label.style_label_left, size=size.small)
+        close_label := label.new(label_x, daily_close, text="当日終値  " + str.tostring(daily_close, format.mintick), color=color.new(close_color, 15), textcolor=f_label_text_color(close_color), style=label.style_label_left, size=size.normal)
+    if not na(vwapValue)
+        daily_vwap_label := label.new(label_x, vwapValue, text="当日VWAP  " + str.tostring(vwapValue, format.mintick), color=color.new(daily_vwap_color, 15), textcolor=f_label_text_color(daily_vwap_color), style=label.style_label_left, size=size.normal)
 else
     // チェックを外したときにラベルを消す
     label.delete(open_label)
