@@ -184,6 +184,7 @@ round_count = input.int(6, "上下に表示する本数", minval=1, maxval=15, g
 round_color = input.color(color.new(#9e9e9e, 30), "キリ番の色", group=group_round)
 
 mkl_line_width = input.int(1, "節目ライン太さ", minval=1, maxval=3, group=group_round)
+mkl_label_offset = input.int(2, "節目ラベルオフセット（バー数）", minval=0, maxval=50, group=group_round)
 
 group_sig = "【節目】サイン"
 use_sig = input.bool(false, "サインを表示", group=group_sig)
@@ -1206,72 +1207,72 @@ if barstate.islast
     // 新しく描画
     if show_pdh and not na(mkl_pdh)
         l_pdh  := line.new(bar_index, mkl_pdh, bar_index + 1, mkl_pdh, color=#ff5252, width=mkl_line_width, extend=extend.right)
-        lb_pdh := label.new(bar_index + 2, mkl_pdh, "前日高値  " + str.tostring(mkl_pdh, format.mintick), style=label.style_label_left, color=color.new(#ff5252, 15), textcolor=color.white, size=size.normal)
+        lb_pdh := label.new(bar_index + mkl_label_offset, mkl_pdh, "前日高値  " + str.tostring(mkl_pdh, format.mintick), style=label.style_label_left, color=color.new(#ff5252, 15), textcolor=color.white, size=size.normal)
 
     if show_pdl and not na(mkl_pdl)
         l_pdl  := line.new(bar_index, mkl_pdl, bar_index + 1, mkl_pdl, color=#4caf50, width=mkl_line_width, extend=extend.right)
-        lb_pdl := label.new(bar_index + 2, mkl_pdl, "前日安値  " + str.tostring(mkl_pdl, format.mintick), style=label.style_label_left, color=color.new(#4caf50, 15), textcolor=color.white, size=size.normal)
+        lb_pdl := label.new(bar_index + mkl_label_offset, mkl_pdl, "前日安値  " + str.tostring(mkl_pdl, format.mintick), style=label.style_label_left, color=color.new(#4caf50, 15), textcolor=color.white, size=size.normal)
 
     if show_pdc and not na(mkl_pdc)
         l_pdc  := line.new(bar_index, mkl_pdc, bar_index + 1, mkl_pdc, color=#ffeb3b, width=mkl_line_width, extend=extend.right)
-        lb_pdc := label.new(bar_index + 2, mkl_pdc, "前日終値  " + str.tostring(mkl_pdc, format.mintick), style=label.style_label_left, color=color.new(#ffeb3b, 15), textcolor=color.black, size=size.normal)
+        lb_pdc := label.new(bar_index + mkl_label_offset, mkl_pdc, "前日終値  " + str.tostring(mkl_pdc, format.mintick), style=label.style_label_left, color=color.new(#ffeb3b, 15), textcolor=color.black, size=size.normal)
 
     if show_pdo and not na(mkl_pdo)
         l_pdo  := line.new(bar_index, mkl_pdo, bar_index + 1, mkl_pdo, color=#90caf9, width=mkl_line_width, extend=extend.right)
-        lb_pdo := label.new(bar_index + 2, mkl_pdo, "前日始値  " + str.tostring(mkl_pdo, format.mintick), style=label.style_label_left, color=color.new(#90caf9, 15), textcolor=color.white, size=size.normal)
+        lb_pdo := label.new(bar_index + mkl_label_offset, mkl_pdo, "前日始値  " + str.tostring(mkl_pdo, format.mintick), style=label.style_label_left, color=color.new(#90caf9, 15), textcolor=color.white, size=size.normal)
 
     if show_pwh and not na(mkl_pwh)
         l_pwh  := line.new(bar_index, mkl_pwh, bar_index + 1, mkl_pwh, color=#ff9800, width=mkl_line_width, extend=extend.right)
-        lb_pwh := label.new(bar_index + 2, mkl_pwh, "前週高値  " + str.tostring(mkl_pwh, format.mintick), style=label.style_label_left, color=color.new(#ff9800, 15), textcolor=color.white, size=size.normal)
+        lb_pwh := label.new(bar_index + mkl_label_offset, mkl_pwh, "前週高値  " + str.tostring(mkl_pwh, format.mintick), style=label.style_label_left, color=color.new(#ff9800, 15), textcolor=color.white, size=size.normal)
 
     if show_pwl and not na(mkl_pwl)
         l_pwl  := line.new(bar_index, mkl_pwl, bar_index + 1, mkl_pwl, color=#ff9800, width=mkl_line_width, extend=extend.right)
-        lb_pwl := label.new(bar_index + 2, mkl_pwl, "前週安値  " + str.tostring(mkl_pwl, format.mintick), style=label.style_label_left, color=color.new(#ff9800, 15), textcolor=color.white, size=size.normal)
+        lb_pwl := label.new(bar_index + mkl_label_offset, mkl_pwl, "前週安値  " + str.tostring(mkl_pwl, format.mintick), style=label.style_label_left, color=color.new(#ff9800, 15), textcolor=color.white, size=size.normal)
 
     if show_cwo and not na(mkl_cwo)
         l_cwo  := line.new(bar_index, mkl_cwo, bar_index + 1, mkl_cwo, color=#ffeb3b, width=mkl_line_width, extend=extend.right)
-        lb_cwo := label.new(bar_index + 2, mkl_cwo, "今週始値  " + str.tostring(mkl_cwo, format.mintick), style=label.style_label_left, color=color.new(#ffeb3b, 15), textcolor=color.black, size=size.normal)
+        lb_cwo := label.new(bar_index + mkl_label_offset, mkl_cwo, "今週始値  " + str.tostring(mkl_cwo, format.mintick), style=label.style_label_left, color=color.new(#ffeb3b, 15), textcolor=color.black, size=size.normal)
 
     if show_pivot
         if show_r2 and not na(mkl_r2)
             l_r2  := line.new(bar_index, mkl_r2, bar_index + 1, mkl_r2, color=#f44336, width=mkl_line_width, extend=extend.right)
-            lb_r2 := label.new(bar_index + 2, mkl_r2, "ピボットR2  " + str.tostring(mkl_r2, format.mintick), style=label.style_label_left, color=color.new(#f44336, 15), textcolor=color.white, size=size.normal)
+            lb_r2 := label.new(bar_index + mkl_label_offset, mkl_r2, "ピボットR2  " + str.tostring(mkl_r2, format.mintick), style=label.style_label_left, color=color.new(#f44336, 15), textcolor=color.white, size=size.normal)
         if show_r1 and not na(mkl_r1)
             l_r1  := line.new(bar_index, mkl_r1, bar_index + 1, mkl_r1, color=#ef5350, width=mkl_line_width, extend=extend.right)
-            lb_r1 := label.new(bar_index + 2, mkl_r1, "ピボットR1  " + str.tostring(mkl_r1, format.mintick), style=label.style_label_left, color=color.new(#ef5350, 15), textcolor=color.white, size=size.normal)
+            lb_r1 := label.new(bar_index + mkl_label_offset, mkl_r1, "ピボットR1  " + str.tostring(mkl_r1, format.mintick), style=label.style_label_left, color=color.new(#ef5350, 15), textcolor=color.white, size=size.normal)
         if show_pp and not na(mkl_pp)
             l_pp  := line.new(bar_index, mkl_pp, bar_index + 1, mkl_pp, color=#ffffff, width=mkl_line_width, extend=extend.right)
-            lb_pp := label.new(bar_index + 2, mkl_pp, "ピボットPP  " + str.tostring(mkl_pp, format.mintick), style=label.style_label_left, color=color.new(#ffffff, 15), textcolor=color.black, size=size.normal)
+            lb_pp := label.new(bar_index + mkl_label_offset, mkl_pp, "ピボットPP  " + str.tostring(mkl_pp, format.mintick), style=label.style_label_left, color=color.new(#ffffff, 15), textcolor=color.black, size=size.normal)
         if show_s1 and not na(mkl_s1)
             l_s1  := line.new(bar_index, mkl_s1, bar_index + 1, mkl_s1, color=#66bb6a, width=mkl_line_width, extend=extend.right)
-            lb_s1 := label.new(bar_index + 2, mkl_s1, "ピボットS1  " + str.tostring(mkl_s1, format.mintick), style=label.style_label_left, color=color.new(#66bb6a, 15), textcolor=color.white, size=size.normal)
+            lb_s1 := label.new(bar_index + mkl_label_offset, mkl_s1, "ピボットS1  " + str.tostring(mkl_s1, format.mintick), style=label.style_label_left, color=color.new(#66bb6a, 15), textcolor=color.white, size=size.normal)
         if show_s2 and not na(mkl_s2)
             l_s2  := line.new(bar_index, mkl_s2, bar_index + 1, mkl_s2, color=#43a047, width=mkl_line_width, extend=extend.right)
-            lb_s2 := label.new(bar_index + 2, mkl_s2, "ピボットS2  " + str.tostring(mkl_s2, format.mintick), style=label.style_label_left, color=color.new(#43a047, 15), textcolor=color.white, size=size.normal)
+            lb_s2 := label.new(bar_index + mkl_label_offset, mkl_s2, "ピボットS2  " + str.tostring(mkl_s2, format.mintick), style=label.style_label_left, color=color.new(#43a047, 15), textcolor=color.white, size=size.normal)
 
     if show_tokyo_box
         if not na(tokyoH)
             l_tokyoH  := line.new(bar_index, tokyoH, bar_index + 1, tokyoH, color=#00bcd4, width=mkl_line_width, extend=extend.right)
-            lb_tokyoH := label.new(bar_index + 2, tokyoH, "東京高値  " + str.tostring(tokyoH, format.mintick), style=label.style_label_left, color=color.new(#00bcd4, 15), textcolor=color.white, size=size.normal)
+            lb_tokyoH := label.new(bar_index + mkl_label_offset, tokyoH, "東京高値  " + str.tostring(tokyoH, format.mintick), style=label.style_label_left, color=color.new(#00bcd4, 15), textcolor=color.white, size=size.normal)
         if not na(tokyoL)
             l_tokyoL  := line.new(bar_index, tokyoL, bar_index + 1, tokyoL, color=#00bcd4, width=mkl_line_width, extend=extend.right)
-            lb_tokyoL := label.new(bar_index + 2, tokyoL, "東京安値  " + str.tostring(tokyoL, format.mintick), style=label.style_label_left, color=color.new(#00bcd4, 15), textcolor=color.white, size=size.normal)
+            lb_tokyoL := label.new(bar_index + mkl_label_offset, tokyoL, "東京安値  " + str.tostring(tokyoL, format.mintick), style=label.style_label_left, color=color.new(#00bcd4, 15), textcolor=color.white, size=size.normal)
 
     if show_london_box
         if not na(londonH)
             l_londonH  := line.new(bar_index, londonH, bar_index + 1, londonH, color=#ff9800, width=mkl_line_width, extend=extend.right)
-            lb_londonH := label.new(bar_index + 2, londonH, "ロンドン高値  " + str.tostring(londonH, format.mintick), style=label.style_label_left, color=color.new(#ff9800, 15), textcolor=color.white, size=size.normal)
+            lb_londonH := label.new(bar_index + mkl_label_offset, londonH, "ロンドン高値  " + str.tostring(londonH, format.mintick), style=label.style_label_left, color=color.new(#ff9800, 15), textcolor=color.white, size=size.normal)
         if not na(londonL)
             l_londonL  := line.new(bar_index, londonL, bar_index + 1, londonL, color=#ff9800, width=mkl_line_width, extend=extend.right)
-            lb_londonL := label.new(bar_index + 2, londonL, "ロンドン安値  " + str.tostring(londonL, format.mintick), style=label.style_label_left, color=color.new(#ff9800, 15), textcolor=color.white, size=size.normal)
+            lb_londonL := label.new(bar_index + mkl_label_offset, londonL, "ロンドン安値  " + str.tostring(londonL, format.mintick), style=label.style_label_left, color=color.new(#ff9800, 15), textcolor=color.white, size=size.normal)
 
     if show_ny_box
         if not na(nyH)
             l_nyH  := line.new(bar_index, nyH, bar_index + 1, nyH, color=#7e57c2, width=mkl_line_width, extend=extend.right)
-            lb_nyH := label.new(bar_index + 2, nyH, "NY高値  " + str.tostring(nyH, format.mintick), style=label.style_label_left, color=color.new(#7e57c2, 15), textcolor=color.white, size=size.normal)
+            lb_nyH := label.new(bar_index + mkl_label_offset, nyH, "NY高値  " + str.tostring(nyH, format.mintick), style=label.style_label_left, color=color.new(#7e57c2, 15), textcolor=color.white, size=size.normal)
         if not na(nyL)
             l_nyL  := line.new(bar_index, nyL, bar_index + 1, nyL, color=#7e57c2, width=mkl_line_width, extend=extend.right)
-            lb_nyL := label.new(bar_index + 2, nyL, "NY安値  " + str.tostring(nyL, format.mintick), style=label.style_label_left, color=color.new(#7e57c2, 15), textcolor=color.white, size=size.normal)
+            lb_nyL := label.new(bar_index + mkl_label_offset, nyL, "NY安値  " + str.tostring(nyL, format.mintick), style=label.style_label_left, color=color.new(#7e57c2, 15), textcolor=color.white, size=size.normal)
 
     if show_round
         float base = math.round(close / round_step) * round_step
@@ -1279,6 +1280,6 @@ if barstate.islast
             float level = base + i * round_step
             if level > 0
                 line ln = line.new(bar_index, level, bar_index + 1, level, color=round_color, width=1, extend=extend.right, style=line.style_dotted)
-                label lb = label.new(bar_index + 2, level, str.tostring(level, "#"), style=label.style_label_left, color=color.new(round_color, 70), textcolor=color.gray, size=size.small)
+                label lb = label.new(bar_index + mkl_label_offset, level, str.tostring(level, "#"), style=label.style_label_left, color=color.new(round_color, 70), textcolor=color.gray, size=size.small)
                 array.push(round_lines, ln)
                 array.push(round_labels, lb)
